@@ -190,14 +190,14 @@ describe("installation", () => {
           return ""
         },
       ),
-    ).effect("returns sanitized typed errors for failed package upgrades", () =>
+    ).effect("returns diagnostic typed errors for failed package upgrades", () =>
       Effect.gen(function* () {
         const error = yield* Effect.flip(Installation.use.upgrade("npm", "9.9.9"))
         expect(error).toBeInstanceOf(Installation.UpgradeFailedError)
-        expect(error.stderr).toBe("Upgrade failed for npm (exit code 1).")
+        expect(error.stderr).toBe("Upgrade failed for npm (exit code 1). Details: token=[redacted] command output")
         expect(error.message).toBe(error.stderr)
         expect(error.stderr).not.toContain("secret")
-        expect(error.stderr).not.toContain("command output")
+        expect(error.stderr).toContain("command output")
       }),
     )
 
@@ -210,14 +210,14 @@ describe("installation", () => {
           return ""
         },
       ),
-    ).effect("returns sanitized typed errors when the curl install script fails", () =>
+    ).effect("returns diagnostic typed errors when the curl install script fails", () =>
       Effect.gen(function* () {
         const error = yield* Effect.flip(Installation.use.upgrade("curl", "9.9.9"))
         expect(error).toBeInstanceOf(Installation.UpgradeFailedError)
-        expect(error.stderr).toBe("Upgrade failed for curl (exit code 1).")
+        expect(error.stderr).toBe("Upgrade failed for curl (exit code 1). Details: script output with token=[redacted]")
         expect(error.message).toBe(error.stderr)
         expect(error.stderr).not.toContain("secret")
-        expect(error.stderr).not.toContain("script output")
+        expect(error.stderr).toContain("script output")
       }),
     )
 

@@ -130,9 +130,25 @@ const layer: Layer.Layer<Service, never, HttpClient.HttpClient | AppProcess.Serv
       return "opencode"
     })
 
+    const sanitizeUpgradeDiagnostic = (output: string) => {
+      const diagnostic = output
+        .trim()
+        .replace(/((?:api[-_]?key|authorization|password|secret|token)\s*[:=]\s*)(["']?)[^\s"']+\2/gi, "$1[redacted]")
+        .split(/\r?\n/)
+        .filter(Boolean)
+        .slice(-5)
+        .join("\n")
+        .trim()
+      if (!diagnostic) return ""
+      return ` Details: ${diagnostic.slice(0, 1000)}`
+    }
+
     const upgradeFailure = (method: Method, result?: { code: number; stdout: string; stderr: string }) => {
       if (method === "choco") return "not running from an elevated command shell"
-      if (result) return `Upgrade failed for ${method} (exit code ${result.code}).`
+      if (result) {
+        const detail = sanitizeUpgradeDiagnostic(result.stderr || result.stdout)
+        return `Upgrade failed for ${method} (exit code ${result.code}).${detail}`
+      }
       return `Upgrade failed for ${method}.`
     }
 
@@ -161,7 +177,12 @@ const layer: Layer.Layer<Service, never, HttpClient.HttpClient | AppProcess.Serv
           stderr: result.stderr.toString("utf8"),
         }
       },
-      Effect.mapError(() => new UpgradeFailedError({ stderr: upgradeFailure("curl") })),
+      Effect.mapError(
+        (cause) =>
+          new UpgradeFailedError({
+            stderr: upgradeFailure("curl", { code: 1, stdout: "", stderr: errorMessage(cause) }),
+          }),
+      ),
     )
 
     const result: Interface = {
